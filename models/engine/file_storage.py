@@ -1,17 +1,21 @@
 #!/usr/bin/python3
-"""
-Module file_storage serializes and
-deserializes JSON types
-"""
+"""File Storage Class"""
+
 
 import json
 from models.base_model import BaseModel
+from models.state import State
+from models.city import City
+from models.amenity import Amenity
+from models.place import Place
+from models.review import Review
 from models.user import User
 
 
 class FileStorage:
     """
-    Custom class for file storage
+    This class provides a file storage module for serializing instances
+    to a JSON file and deserializing JSON files to instances.
     """
 
     __file_path = "file.json"
@@ -19,39 +23,56 @@ class FileStorage:
 
     def all(self):
         """
-        Returns dictionary representation of all objects
+        Returns the dictionary of all objects.
+
+        Returns:
+            dict: A dictionary containing all objects.
         """
         return self.__objects
 
-    def new(self, object):
-        """sets in __objects the object with the key
-        <object class name>.id
+    def new(self, obj):
+        """
+        Adds a new object to the dictionary of objects.
 
         Args:
-            object(obj): object to write
-
+            obj: The object to be added.
         """
-        self.__objects[object.__class__.__name__ + '.' + str(object)] = object
+        class_name = obj.__class__.__name__
+        self.__objects[f"{class_name}.{obj.id}"] = obj
 
     def save(self):
         """
-        serializes __objects to the JSON file
-        (path: __file_path)
+        Serializes the objects dictionary to a JSON file.
+        The JSON file path is specified by __file_path.
         """
-        with open(self.__file_path, 'w+') as f:
-            json.dump({k: v.to_dict() for k, v in self.__objects.items()
-                       }, f)
+        obj_dict = {}
+        for key, obj in self.__objects.items():
+            obj_dict[key] = obj.to_dict()
+        with open(self.__file_path, "w") as file:
+            json.dump(obj_dict, file)
 
     def reload(self):
         """
-        deserializes the JSON file to __objects, if the JSON
-        file exists, otherwise nothing happens)
+        Deserializes the JSON file and updates the objects dictionary.
+        If the JSON file (__file_path) exists it reads the file
+        and loads objects.
+        If the file doesn't exist, it does nothing.
         """
+        clslist = {
+            'BaseModel': BaseModel,
+            'State': State,
+            'City': City,
+            'Amenity': Amenity,
+            'Place': Place,
+            'Review': Review,
+            'User': User
+        }
+
         try:
-            with open(self.__file_path, 'r') as f:
-                dict = json.loads(f.read())
-                for value in dict.values():
-                    cls = value["__class__"]
-                    self.new(eval(cls)(**value))
-        except Exception:
+            with open(self.__file_path, "r") as file:
+                obj_dict = json.load(file)
+                for key, value in obj_dict.items():
+                    class_name, obj_id = key.split(".")
+                    self.__objects[key] = globals()[class_name](**value)
+        except FileNotFoundError:
             pass
